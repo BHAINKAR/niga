@@ -5,6 +5,8 @@ import time
 import threading
 from uuid import uuid1
 from datetime import datetime, timedelta
+from flask import Flask, request
+
 
 bot = telebot.TeleBot('7639935025:AAEupN7TEP0YxiyryyFCKzpnUI0Wx1VQaV4')
 authorized_users = {"5727462573"}  # Owner is automatically authorized
@@ -16,6 +18,19 @@ mchk_max_free = 3  # Free users can check up to 3 combinations per command
 weekly_limit = 3  # Free users can check a maximum of 10 combinations per week
 authorized_limit = 150  # Authorized users can check 150 combinations
 owner_id = "5727462573"  # Replace with your own chat ID
+
+app = Flask(__name__)
+
+@app.route('/' + bot.token, methods=['POST'])
+def get_message():
+    json_str = request.stream.read().decode('UTF-8')
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return '!', 200
+
+@app.route("/", methods=['GET'])
+def index():
+    return "Bot is running!"
 
 
 # Helper function to get current time
@@ -250,8 +265,7 @@ def add_user(message):
 
 # Start the bot
 if __name__ == "__main__":
-    bot.polling
     bot.remove_webhook()
-    bot.set_webhook(url="https://file-renamer-bot-wz5b.onrender.com/" + bot.token)  # Replace with your server URL
+    bot.set_webhook(url="https://niga-2l8a.onrender.com/" + bot.token)  # Replace with your server URL
     app.run(host="0.0.0.0", port=5000)  # You can change the port number if needed
    
