@@ -13,9 +13,9 @@ authorized_users = {"5727462573"}  # Owner is automatically authorized
 user_limits = {}  # Tracks the limit of mchk for free users
 hits_file = "CʀᴜɴᴄʜʏRᴏʟʟ_Hɪᴛs.txt"
 cooldown = {}
-cooldown_time = 3  # Free user cooldown in seconds
+cooldown_time = 30  # Free user cooldown in seconds
 mchk_max_free = 3  # Free users can check up to 3 combinations per command
-weekly_limit = 3  # Free users can check a maximum of 10 combinations per week
+weekly_limit = 30  # Free users can check a maximum of 10 combinations per week
 authorized_limit = 150  # Authorized users can check 150 combinations
 owner_id = "5727462573"  # Replace with your own chat ID
 
