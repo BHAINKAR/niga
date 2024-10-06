@@ -13,25 +13,11 @@ free_users = set()  # Free users set, will load from file
 user_limits = {}  # Tracks the limit of mchk for free users
 hits_file = "CʀᴜɴᴄʜʏRᴏʟʟ_Hɪᴛs.txt"
 cooldown = {}
-cooldown_time = 3  # Free user cooldown in seconds
+cooldown_time = 30  # Free user cooldown in seconds
 mchk_max_free = 3  # Free users can check up to 3 combinations per command
-weekly_limit = 3  # Free users can check a maximum of 10 combinations per week
+weekly_limit = 30  # Free users can check a maximum of 10 combinations per week
 authorized_limit = 150  # Authorized users can check 150 combinations
 owner_id = "5727462573"  # Replace with your own chat ID
-
-app = Flask(__name__)
-
-@app.route('/' + bot.token, methods=['POST'])
-def get_message():
-    json_str = request.stream.read().decode('UTF-8')
-    update = telebot.types.Update.de_json(json_str)
-    bot.process_new_updates([update])
-    return '!', 200
-
-@app.route("/", methods=['GET'])
-def index():
-    return "Bot is running!"
-
 stats_file = "bot_stats.txt"  # File to store total_users count
 
 authorized_users_file = "authorized_users.txt"
@@ -75,6 +61,20 @@ def save_stats():
         f.write(str(total_users))
 
 load_users()  # Load users at startup
+
+app = Flask(__name__)
+
+@app.route('/' + bot.token, methods=['POST'])
+def get_message():
+    json_str = request.stream.read().decode('UTF-8')
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return '!', 200
+
+@app.route("/", methods=['GET'])
+def index():
+    return "Bot is running!"
+
 
 # Helper function to get current time
 def current_time():
@@ -379,6 +379,7 @@ def broadcast(message):
 
 # Start the bot
 if __name__ == "__main__":
-	bot.remove_webhook()
+    bot.remove_webhook()
     bot.set_webhook(url="https://niga-2l8a.onrender.com/" + bot.token)  # Replace with your server URL
     app.run(host="0.0.0.0", port=5000)  # You can change the port number if needed
+   
