@@ -7,44 +7,67 @@ from uuid import uuid1
 from datetime import datetime, timedelta
 from flask import Flask, request
 
-bot = telebot.TeleBot('7639935025:AAEupN7TEP0YxiyryyFCKzpnUI0Wx1VQaV4')
+bot = telebot.TeleBot('7308448311:AAF5MdrUTcN9FsZnOpBFHoiipDRcCutigYE')
+
 authorized_users = set()  # Authorized users set, initially empty, will load from file
 free_users = set()  # Free users set, will load from file
 user_limits = {}  # Tracks the limit of mchk for free users
+
 hits_file = "CʀᴜɴᴄʜʏRᴏʟʟ_Hɪᴛs.txt"
 cooldown = {}
-cooldown_time = 30 # Free user cooldown in seconds
+cooldown_time = 30  # Free user cooldown in seconds
 mchk_max_free = 3  # Free users can check up to 3 combinations per command
 weekly_limit = 30  # Free users can check a maximum of 10 combinations per week
 authorized_limit = 150  # Authorized users can check 150 combinations
+
 owner_id = "5727462573"  # Replace with your own chat ID
 stats_file = "bot_stats.txt"  # File to store total_users count
-
 authorized_users_file = "authorized_users.txt"
 free_users_file = "free_users.txt"
+github_repo_url = "https://raw.githubusercontent.com/BHAINKAR/niga/main/"
 
 # Global variables for tracking users
 total_users = 0  # Will load from stats file
 
+
+# Helper function to load a file from GitHub if not available locally
+def load_file(file_path):
+    if os.path.exists(file_path):
+        with open(file_path, "r") as f:
+            return f.read()
+    else:
+        file_url = github_repo_url + file_path
+        response = requests.get(file_url)
+        if response.status_code == 200:
+            return response.text
+        else:
+            return None
+
+
 # Load authorized and free users from file
 def load_users():
     global total_users
-    if os.path.exists(authorized_users_file):
-        with open(authorized_users_file, "r") as f:
-            for line in f:
-                authorized_users.add(line.strip())
-    if os.path.exists(free_users_file):
-        with open(free_users_file, "r") as f:
-            for line in f:
-                free_users.add(line.strip())
+
+    # Load authorized users
+    authorized_data = load_file(authorized_users_file)
+    if authorized_data:
+        for line in authorized_data.splitlines():
+            authorized_users.add(line.strip())
+
+    # Load free users
+    free_data = load_file(free_users_file)
+    if free_data:
+        for line in free_data.splitlines():
+            free_users.add(line.strip())
 
     # Load the total users from the stats file
-    if os.path.exists(stats_file):
-        with open(stats_file, "r") as f:
-            total_users = int(f.read().strip())  # Read the total users from the stats file
+    stats_data = load_file(stats_file)
+    if stats_data:
+        total_users = int(stats_data.strip())
     else:
         total_users = len(authorized_users) + len(free_users)
         save_stats()  # Save initial stats if the file doesn't exist
+
 
 # Save authorized and free users to file
 def save_users():
@@ -55,10 +78,12 @@ def save_users():
         for user in free_users:
             f.write(user + "\n")
 
+
 # Save the total users to the stats file
 def save_stats():
     with open(stats_file, "w") as f:
         f.write(str(total_users))
+
 
 load_users()  # Load users at startup
 
@@ -114,17 +139,18 @@ def reset_weekly_limit(user_id):
 def start(message):
     global total_users
     user_id = str(message.from_user.id)
-    
+
     # Check if the user is a new user and add them to free users
     if user_id not in free_users and user_id not in authorized_users:
         free_users.add(user_id)
         total_users += 1
         save_users()  # Save new user to the file
         save_stats()  # Save the updated stats
-    
+
     chat_id = message.chat.id
     gif_url = "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExcjR3Y3JldDhodHBhdXg4bTZyd2k4Nmt6MnQxOWhrdDR2cnJtajN1YSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/B1Lopnwqs9WIr3GtnQ/giphy.gif"
-    bot.send_animation(chat_id, gif_url, caption=        "🎉 <b>Wᴇʟᴄᴏᴍᴇ Tᴏ CʀᴜɴᴄʜʏRᴏʟʟ Cʜᴇᴄᴋᴇʀ</b> 🎉\n"
+    bot.send_animation(chat_id, gif_url, caption=(
+        "🎉 <b>Wᴇʟᴄᴏᴍᴇ Tᴏ CʀᴜɴᴄʜʏRᴏʟʟ Cʜᴇᴄᴋᴇʀ</b> 🎉\n"
         "\n"
         "🔍 <b>Single Check:</b> Use <code>/chk email:pass</code> to check one account.\n"
         "🔄 <b>Multi-Check:</b> Use <code>/mchk</code> to check up to 3 accounts at once.\n"
@@ -136,14 +162,10 @@ def start(message):
         "\n"
         "<i>Enjoy fast and accurate checking with</i> <b>CʀᴜɴᴄʜʏRᴏʟʟ Cʜᴇᴄᴋᴇʀ</b>!"
         "\n\n"
-        "Bᴏᴛ Bʏ @bhainkar",
-        parse_mode='HTML')
+        "Bᴏᴛ Bʏ @bhainkar"), parse_mode='HTML')
 
-# Handle /chk for a single account (no changes to this function, it's the same as you had)
+# Your remaining code logic for handling other bot commands and features...
 
-# Handle /mchk for multiple accounts (no changes to this function, it's the same as you had)
-
-# Command to check details of the user
 @bot.message_handler(commands=['details'])
 def details(message):
     user_id = str(message.from_user.id)
@@ -385,4 +407,4 @@ if __name__ == "__main__":
     bot.remove_webhook()
     bot.set_webhook(url="https://niga-2l8a.onrender.com/" + bot.token)  # Replace with your server URL
     app.run(host="0.0.0.0", port=5000)  # You can change the port number if needed
-   
+        
