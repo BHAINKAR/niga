@@ -250,5 +250,8 @@ def add_user(message):
 
 # Start the bot
 if __name__ == "__main__":
-    bot.polling()
+    bot.polling
+    bot.remove_webhook()
+    bot.set_webhook(url="https://file-renamer-bot-wz5b.onrender.com/" + bot.token)  # Replace with your server URL
+    app.run(host="0.0.0.0", port=5000)  # You can change the port number if needed
    
