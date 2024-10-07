@@ -9,83 +9,17 @@ from flask import Flask, request
 
 bot = telebot.TeleBot('7308448311:AAF5MdrUTcN9FsZnOpBFHoiipDRcCutigYE')
 
-authorized_users = set()  # Authorized users set, initially empty, will load from file
-free_users = set()  # Free users set, will load from file
+authorized_users = set() # Owner is automatically authorized
+free_users = set()
 user_limits = {}  # Tracks the limit of mchk for free users
-
 hits_file = "CʀᴜɴᴄʜʏRᴏʟʟ_Hɪᴛs.txt"
 cooldown = {}
 cooldown_time = 30  # Free user cooldown in seconds
 mchk_max_free = 3  # Free users can check up to 3 combinations per command
 weekly_limit = 30  # Free users can check a maximum of 10 combinations per week
-authorized_limit = 150  # Authorized users can check 150 combinations
-
+authorized_limit = 300  # Authorized users can check 150 combinations
 owner_id = "5727462573"  # Replace with your own chat ID
-stats_file = "bot_stats.txt"  # File to store total_users count
-authorized_users_file = "authorized_users.txt"
-free_users_file = "free_users.txt"
-github_repo_url = "https://raw.githubusercontent.com/BHAINKAR/niga/main/"
-
-# Global variables for tracking users
-total_users = 0  # Will load from stats file
-
-
-# Helper function to load a file from GitHub if not available locally
-def load_file(file_path):
-    if os.path.exists(file_path):
-        with open(file_path, "r") as f:
-            return f.read()
-    else:
-        file_url = github_repo_url + file_path
-        response = requests.get(file_url)
-        if response.status_code == 200:
-            return response.text
-        else:
-            return None
-
-
-# Load authorized and free users from file
-def load_users():
-    global total_users
-
-    # Load authorized users
-    authorized_data = load_file(authorized_users_file)
-    if authorized_data:
-        for line in authorized_data.splitlines():
-            authorized_users.add(line.strip())
-
-    # Load free users
-    free_data = load_file(free_users_file)
-    if free_data:
-        for line in free_data.splitlines():
-            free_users.add(line.strip())
-
-    # Load the total users from the stats file
-    stats_data = load_file(stats_file)
-    if stats_data:
-        total_users = int(stats_data.strip())
-    else:
-        total_users = len(authorized_users) + len(free_users)
-        save_stats()  # Save initial stats if the file doesn't exist
-
-
-# Save authorized and free users to file
-def save_users():
-    with open(authorized_users_file, "w") as f:
-        for user in authorized_users:
-            f.write(user + "\n")
-    with open(free_users_file, "w") as f:
-        for user in free_users:
-            f.write(user + "\n")
-
-
-# Save the total users to the stats file
-def save_stats():
-    with open(stats_file, "w") as f:
-        f.write(str(total_users))
-
-
-load_users()  # Load users at startup
+total_users = 0
 
 app = Flask(__name__)
 
@@ -99,7 +33,22 @@ def get_message():
 @app.route("/", methods=['GET'])
 def index():
     return "Bot is running!"
-
+    
+# Handler to display bot statistics
+@bot.message_handler(commands=['stats'])
+def stats(message):
+    # Calculate total users by adding both authorized and free users
+    total_users = len(authorized_users) + len(free_users)
+    
+    # Send the stats to the user
+    bot.send_message(
+        message.chat.id,
+        f"📊 𝐁𝐨𝐭 𝐒𝐭𝐚𝐭𝐢𝐬𝐭𝐢𝐜𝐬:\n\n"
+        f"👥 𝗧𝗼𝘁𝗮𝗹 𝗨𝘀𝗲𝗿𝘀: {total_users}\n"
+        f"🔓 𝗙𝗿𝗲𝗲 𝗨𝘀𝗲𝗿𝘀: {len(free_users)}\n"
+        f"🔒 𝗔𝘂𝘁𝗵𝗼𝗿𝗶𝘇𝗲𝗱 𝗨𝘀𝗲𝗿𝘀: {len(authorized_users)}",
+        disable_web_page_preview=True
+    )
 # Helper function to get current time
 def current_time():
     return datetime.now()
@@ -134,19 +83,25 @@ def reset_weekly_limit(user_id):
     elif is_week_over(user_limits[user_id]['last_reset']):
         user_limits[user_id] = {'count': 0, 'last_reset': current_time()}
 
-# Handle /start command and track new users
+# Handle /start command
 @bot.message_handler(commands=['start'])
-def start(message):
-    global total_users
+@bot.message_handler(commands=['start'])
+def add_user(message):
+    global total_users  # Use the global keyword to modify the global variable
     user_id = str(message.from_user.id)
 
-    # Check if the user is a new user and add them to free users
+    # Check if the user is already in any of the lists
     if user_id not in free_users and user_id not in authorized_users:
-        free_users.add(user_id)
-        total_users += 1
-        save_users()  # Save new user to the file
-        save_stats()  # Save the updated stats
+        # Add the user to the free users list if not already added
+        free_users.add(user_id)  # Correct method for adding users to a set
+        
+        # Update the total_users correctly by setting it based on set length
+        total_users = len(free_users) + len(authorized_users)  # Calculate total users
 
+        bot.send_message(message.chat.id, "Wᴇʟᴄᴏᴍᴇ! Yᴏᴜ Hᴀᴠᴇ Bᴇᴇɴ Aᴅᴅᴇᴅ ᴀs ᴀ Fʀᴇᴇ Usᴇʀ.", disable_web_page_preview=True)
+    else:
+        bot.send_message(message.chat.id, "Yᴏᴜ Aʀᴇ Aʟʀᴇᴀᴅʏ ʀᴇɢɪsᴛᴇʀᴇᴅ!", disable_web_page_preview=True)
+       
     chat_id = message.chat.id
     gif_url = "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExcjR3Y3JldDhodHBhdXg4bTZyd2k4Nmt6MnQxOWhrdDR2cnJtajN1YSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/B1Lopnwqs9WIr3GtnQ/giphy.gif"
     bot.send_animation(chat_id, gif_url, caption=(
@@ -156,7 +111,7 @@ def start(message):
         "🔄 <b>Multi-Check:</b> Use <code>/mchk</code> to check up to 3 accounts at once.\n"
         "\n"
         "💡 <b>Fʀᴇᴇ Pʟᴀɴ:</b> 10 /mchk checks/week, 3 accounts at a time, 30s cooldown.\n"
-        "🚀 <b>Bʜᴀɪɴᴋᴀʀ Pʟᴀɴ:</b> 150 accounts at once, no cooldown. DM @bhainkar for access.\n"
+        "🚀 <b>Bʜᴀɪɴᴋᴀʀ Pʟᴀɴ:</b> 300 accounts at once, no cooldown. DM @bhainkar for access.\n"
         "\n"
         "ℹ️ <b>Details:</b> Use /details to check your info"
         "\n"
@@ -164,67 +119,9 @@ def start(message):
         "\n\n"
         "Bᴏᴛ Bʏ @bhainkar"), parse_mode='HTML')
 
-# Your remaining code logic for handling other bot commands and features...
 
-@bot.message_handler(commands=['details'])
-def details(message):
-    user_id = str(message.from_user.id)
-    username = message.from_user.username
-    plan_type = "Bʜᴀɪɴᴋᴀʀ Pʟᴀɴ" if is_authorized(user_id) else "Fʀᴇᴇ Pʟᴀɴ"
-    chat_id = message.chat.id
-    gif_url = "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExNWt0YWZyaHRrbG5xNzN4MTlkOWZmeDRyZ2ZjcmlwMjhlcnE1azVlNiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/2FHr56vo08zbq8ac0C/giphy.gif"
-    bot.send_animation(chat_id, gif_url, caption=f"𝗬𝗼𝘂𝗿 𝗗𝗲𝘁𝗮𝗶𝗹𝘀:\n<b>Username:</b> @{username}\n<b>Chat ID:</b><code> {user_id}</code>\n<b>Plan:</b> {plan_type}\n\n<b>Bᴏᴛ ʙʏ</b> @bhainkar", parse_mode="HTML",)
 
-# Command to authorize users (Owner only)
-@bot.message_handler(commands=['add'])
-def add_user(message):
-    global total_users
-    user_id = message.from_user.id
-    if str(user_id) != owner_id:
-        bot.send_message(message.chat.id, "Uɴᴀᴜᴛʜᴏʀɪᴢᴇᴅ! Oɴʟʏ ᴛʜᴇ Oᴡɴᴇʀ Cᴀɴ Aᴅᴅ Usᴇʀs.", disable_web_page_preview=True)
-        return
-
-    try:
-        new_user_id = str(message.text.split()[1])
-        if new_user_id not in authorized_users:
-            authorized_users.add(new_user_id)
-            free_users.discard(new_user_id)  # Remove from free users if they exist there
-            save_users()
-            bot.send_message(message.chat.id, f"𝗦ᴜᴄᴄᴇss! Aᴅᴅᴇᴅ Aᴜᴛʜᴏʀɪᴢᴇᴅ Usᴇʀ {new_user_id}.", disable_web_page_preview=True)
-        else:
-            bot.send_message(message.chat.id, f"Usᴇʀ {new_user_id} ɪs ᴀʟʀᴇᴀᴅʏ ᴀᴜᴛʜᴏʀɪᴢᴇᴅ.", disable_web_page_preview=True)
-    except (ValueError, IndexError):
-        bot.send_message(message.chat.id, "Usᴇ /add <user_id> Tᴏ Aᴜᴛʜᴏʀɪᴢᴇ A Usᴇʀ.", disable_web_page_preview=True)
-
-# Command to remove authorized users (Owner only)
-@bot.message_handler(commands=['remove'])
-def remove_user(message):
-    user_id = message.from_user.id
-    if str(user_id) != owner_id:
-        bot.send_message(message.chat.id, "Uɴᴀᴜᴛʜᴏʀɪᴢᴇᴅ! Oɴʟʏ ᴛʜᴇ Oᴡɴᴇʀ ᴄᴀɴ ʀᴇᴍᴏᴠᴇ ᴜsᴇʀs.", disable_web_page_preview=True)
-        return
-
-    try:
-        remove_user_id = str(message.text.split()[1])
-        if remove_user_id in authorized_users:
-            authorized_users.remove(remove_user_id)
-            bot.send_message(message.chat.id, f"𝗦ᴜᴄᴄᴇss! Rᴇᴍᴏᴠᴇᴅ Aᴜᴛʜᴏʀɪᴢᴇᴅ Usᴇʀ {remove_user_id}.", disable_web_page_preview=True)
-            save_users()
-        else:
-            bot.send_message(message.chat.id, f"Usᴇʀ {remove_user_id} ɴᴏᴛ ɪɴ ᴀᴜᴛʜᴏʀɪᴢᴇᴅ ʟɪsᴛ.", disable_web_page_preview=True)
-    except (ValueError, IndexError):
-        bot.send_message(message.chat.id, "Usᴇ /remove <user_id> Tᴏ Rᴇᴍᴏᴠᴇ A Usᴇʀ.", disable_web_page_preview=True)
-
-# Command to check bot stats (Owner only)
-@bot.message_handler(commands=['stats'])
-def bot_stats(message):
-    user_id = message.from_user.id
-    if str(user_id) != owner_id:
-        bot.send_message(message.chat.id, "Uɴᴀᴜᴛʜᴏʀɪᴢᴇᴅ! Oɴʟʏ ᴛʜᴇ Oᴡɴᴇʀ ᴄᴀɴ ᴄʜᴇᴄᴋ sᴛᴀᴛs.", disable_web_page_preview=True)
-        return
-
-    bot.send_message(message.chat.id, f"𝗕ᴏᴛ Sᴛᴀᴛs:\n<b>Total Users:</b> {total_users}\n<b>Free Users:</b> {len(free_users)}\n<b>Authorized Users:</b> {len(authorized_users)}", parse_mode="HTML")
-
+# Handle /chk for a single account
 @bot.message_handler(commands=['chk'])
 @anti_spam
 def chk(message):
@@ -373,8 +270,8 @@ def check_crunchyroll_account(email, pasw, message):
             return f"<blockquote expandable>⚠️ 𝗖𝗨𝗦𝗧𝗢𝗠: {email} - Uɴᴋɴᴏᴡɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ.</blockquote>"
     except requests.exceptions.RequestException as e:
         return f"<blockquote expandable>⚠️ 𝗖𝗨𝗦𝗧𝗢𝗠: {email} - Fᴀɪʟᴇᴅ ᴛᴏ ᴄᴏɴɴᴇᴄᴛ.</blockquote>"
-        
-# Command to broadcast a message to all users (Owner only)
+
+
 @bot.message_handler(commands=['broadcast'])
 def broadcast(message):
     user_id = message.from_user.id
@@ -402,9 +299,80 @@ def broadcast(message):
     except Exception as e:
         bot.send_message(message.chat.id, f"Sᴏᴍᴇᴛʜɪɴɢ Wᴇɴᴛ Wʀᴏɴɢ: {str(e)}", disable_web_page_preview=True)
 
-# Start the bot
+
+        
+# Command to check details of the user
+@bot.message_handler(commands=['details'])
+def details(message):
+    user_id = str(message.from_user.id)
+    username = message.from_user.username
+    
+    plan_type = "Bʜᴀɪɴᴋᴀʀ Pʟᴀɴ" if is_authorized(user_id) else "Fʀᴇᴇ Pʟᴀɴ"
+    chat_id = message.chat.id
+    gif_url = "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExNWt0YWZyaHRrbG5xNzN4MTlkOWZmeDRyZ2ZjcmlwMjhlcnE1azVlNiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/2FHr56vo08zbq8ac0C/giphy.gif"
+    bot.send_animation(chat_id, gif_url, caption=f"𝗬𝗼𝘂𝗿 𝗗𝗲𝘁𝗮𝗶𝗹𝘀:\n<b>Username:</b> @{username}\n<b>Chat ID:</b><code> {user_id}</code>\n<b>Plan:</b> {plan_type}\n\n<b>Bᴏᴛ ʙʏ</b> @bhainkar", parse_mode="HTML",)
+    
+# Command to authorize users (Owner only)
+@bot.message_handler(commands=['add'])
+def authorize_user(message):
+    user_id = message.from_user.id
+
+    # Only owner can authorize
+    if str(user_id) != owner_id:
+        bot.send_message(message.chat.id, "Unauthorized! Only the owner can authorize users.")
+        return
+
+    # Get the user ID to authorize
+    try:
+        user_to_authorize = str(message.text.split()[1])  # The user ID to authorize as a string
+    except (IndexError, ValueError):
+        bot.send_message(message.chat.id, "Please provide a valid user ID to authorize.")
+        return
+
+    # Check if the user is in the free users list
+    if user_to_authorize in free_users:
+        free_users.remove(user_to_authorize)
+        authorized_users.add(user_to_authorize)
+        bot.send_message(message.chat.id, f"User {user_to_authorize} has been authorized!")
+    else:
+        bot.send_message(message.chat.id, "User not found in free users list.")
+
+        
+@bot.message_handler(commands=['remove'])
+def remove_user(message):
+    user_id = message.from_user.id
+
+    # Only owner can remove users
+    if str(user_id) != owner_id:
+        bot.send_message(message.chat.id, "Uɴᴀᴜᴛʜᴏʀɪᴢᴇᴅ! Oɴʟʏ ᴛʜᴇ Oᴡɴᴇʀ Cᴀɴ Rᴇᴍᴏᴠᴇ Usᴇʀs.", disable_web_page_preview=True)
+        return
+
+    try:
+        # Get the user ID to remove and convert it to a string
+        remove_user_id = str(message.text.split()[1])
+
+        # Check if user exists in the authorized or free user lists
+        if remove_user_id in authorized_users:
+            authorized_users.remove(remove_user_id)
+            free_users.add(remove_user_id)  # Add back to free users
+            bot.send_message(message.chat.id, f"𝗦ᴜᴄᴄᴇss! Rᴇᴍᴏᴠᴇᴅ Aᴜᴛʜᴏʀɪᴢᴇᴅ Usᴇʀ {remove_user_id}. Mᴏᴠᴇᴅ Tᴏ Fʀᴇᴇ Usᴇʀs.", disable_web_page_preview=True)
+        
+        elif remove_user_id in free_users:
+            free_users.remove(remove_user_id)
+            bot.send_message(message.chat.id, f"𝗦ᴜᴄᴄᴇss! Rᴇᴍᴏᴠᴇᴅ Fʀᴇᴇ Usᴇʀ {remove_user_id}.", disable_web_page_preview=True)
+
+        else:
+            bot.send_message(message.chat.id, f"Usᴇʀ {remove_user_id} ɴᴏᴛ ғᴏᴜɴᴅ ɪɴ ᴛʜᴇ ᴜsᴇʀ ʟɪsᴛs.", disable_web_page_preview=True)
+
+        # Update statistics
+        total_users = len(authorized_users) + len(free_users)
+        
+    except (ValueError, IndexError):
+        bot.send_message(message.chat.id, "Usᴇ /remove <user_id> Tᴏ Rᴇᴍᴏᴠᴇ A Usᴇʀ.", disable_web_page_preview=True)
+
+
 if __name__ == "__main__":
     bot.remove_webhook()
     bot.set_webhook(url="https://niga-2l8a.onrender.com/" + bot.token)  # Replace with your server URL
     app.run(host="0.0.0.0", port=5000)  # You can change the port number if needed
-        
+      
