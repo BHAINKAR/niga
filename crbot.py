@@ -7,7 +7,7 @@ from uuid import uuid1
 from datetime import datetime, timedelta
 from flask import Flask, request
 
-bot = telebot.TeleBot('7308448311:AAF5MdrUTcN9FsZnOpBFHoiipDRcCutigYE')
+bot = telebot.TeleBot('7639935025:AAEupN7TEP0YxiyryyFCKzpnUI0Wx1VQaV4')
 
 authorized_users = set() # Owner is automatically authorized
 free_users = set()
