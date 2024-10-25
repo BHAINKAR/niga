@@ -321,7 +321,7 @@ def remove_user(message):
 
 if __name__ == "__main__":
     bot.remove_webhook()
-    bot.set_webhook(url="" + bot.token)  # Replace with your server URL
+    bot.set_webhook(url="https://niga-8og4.onrender.com/" + bot.token)  # Replace with your server URL
     app.run(host="0.0.0.0", port=5000)  # You can change the port number if needed
 
            
