@@ -63,17 +63,24 @@ def anti_spam(func):
 
 # Handle /start command
 @bot.message_handler(commands=['start'])
+@bot.message_handler(commands=['start'])
 def add_user(message):
-    global total_users
+    global total_users  # Use the global keyword to modify the global variable
     user_id = str(message.from_user.id)
 
+    # Check if the user is already in any of the lists
     if user_id not in free_users and user_id not in authorized_users:
-        free_users.add(user_id)
-        total_users = len(free_users) + len(authorized_users)
+        # Add the user to the free users list if not already added
+        free_users.add(user_id)  # Correct method for adding users to a set
+        
+        # Update the total_users correctly by setting it based on set length
+        total_users = len(free_users) + len(authorized_users)  # Calculate total users
+
         bot.send_message(message.chat.id, "Wᴇʟᴄᴏᴍᴇ! Yᴏᴜ Hᴀᴠᴇ Bᴇᴇɴ Aᴅᴅᴇᴅ ᴀs ᴀ Fʀᴇᴇ Usᴇʀ.", disable_web_page_preview=True)
     else:
         bot.send_message(message.chat.id, "Yᴏᴜ Aʀᴇ Aʟʀᴇᴀᴅʏ ʀᴇɢɪsᴛᴇʀᴇᴅ!", disable_web_page_preview=True)
-        chat_id = message.chat.id
+       
+    chat_id = message.chat.id
     gif_url = "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExcjR3Y3JldDhodHBhdXg4bTZyd2k4Nmt6MnQxOWhrdDR2cnJtajN1YSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/B1Lopnwqs9WIr3GtnQ/giphy.gif"
     bot.send_animation(chat_id, gif_url, caption=(
         "🎉 <b>Wᴇʟᴄᴏᴍᴇ Tᴏ CʀᴜɴᴄʜʏRᴏʟʟ Cʜᴇᴄᴋᴇʀ</b> 🎉\n"
@@ -81,8 +88,8 @@ def add_user(message):
         "🔍 <b>Single Check:</b> Use <code>/chk email:pass</code> to check one account.\n"
         "🔄 <b>Multi-Check:</b> Use <code>/mchk</code> to check up to 3 accounts at once.\n"
         "\n"
-        "💡 <b>Fʀᴇᴇ Pʟᴀɴ:</b> 3 accounts at a time, 30s cooldown.\n"
-        "🚀 <b>Bʜᴀɪɴᴋᴀʀ Pʟᴀɴ:</b> 100 accounts at once, no cooldown. DM @bhainkar for access.\n"
+        "💡 <b>Fʀᴇᴇ Pʟᴀɴ:</b> 10 /mchk checks/week, 3 accounts at a time, 30s cooldown.\n"
+        "🚀 <b>Bʜᴀɪɴᴋᴀʀ Pʟᴀɴ:</b> 300 accounts at once, no cooldown. DM @bhainkar for access.\n"
         "\n"
         "ℹ️ <b>Details:</b> Use /details to check your info"
         "\n"
