@@ -61,6 +61,18 @@ def anti_spam(func):
         return func(message)
     return wrapper
 
+# Command to check details of the user
+@bot.message_handler(commands=['details'])
+def details(message):
+    user_id = str(message.from_user.id)
+    username = message.from_user.username
+    
+    plan_type = "Bʜᴀɪɴᴋᴀʀ Pʟᴀɴ" if is_authorized(user_id) else "Fʀᴇᴇ Pʟᴀɴ"
+    chat_id = message.chat.id
+    gif_url = "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExNWt0YWZyaHRrbG5xNzN4MTlkOWZmeDRyZ2ZjcmlwMjhlcnE1azVlNiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/2FHr56vo08zbq8ac0C/giphy.gif"
+    bot.send_animation(chat_id, gif_url, caption=f"𝗬𝗼𝘂𝗿 𝗗𝗲𝘁𝗮𝗶𝗹𝘀:\n<b>Username:</b> @{username}\n<b>Chat ID:</b><code> {user_id}</code>\n<b>Plan:</b> {plan_type}\n\n<b>Bᴏᴛ ʙʏ</b> @bhainkar", parse_mode="HTML",)
+    
+
 # Handle /start command
 @bot.message_handler(commands=['start'])
 @bot.message_handler(commands=['start'])
@@ -88,8 +100,8 @@ def add_user(message):
         "🔍 <b>Single Check:</b> Use <code>/chk email:pass</code> to check one account.\n"
         "🔄 <b>Multi-Check:</b> Use <code>/mchk</code> to check up to 3 accounts at once.\n"
         "\n"
-        "💡 <b>Fʀᴇᴇ Pʟᴀɴ:</b> 10 /mchk checks/week, 3 accounts at a time, 30s cooldown.\n"
-        "🚀 <b>Bʜᴀɪɴᴋᴀʀ Pʟᴀɴ:</b> 300 accounts at once, no cooldown. DM @bhainkar for access.\n"
+        "💡 <b>Fʀᴇᴇ Pʟᴀɴ:</b> 3 accounts at a time, 30s cooldown.\n"
+        "🚀 <b>Bʜᴀɪɴᴋᴀʀ Pʟᴀɴ:</b> 100 accounts at once, no cooldown. DM @bhainkar for access.\n"
         "\n"
         "ℹ️ <b>Details:</b> Use /details to check your info"
         "\n"
@@ -253,18 +265,7 @@ def broadcast(message):
 
     except Exception as e:
         bot.send_message(message.chat.id, f"Sᴏᴍᴇᴛʜɪɴɢ Wᴇɴᴛ Wʀᴏɴɢ: {str(e)}", disable_web_page_preview=True)    
-        
-# Command to check details of the user
-@bot.message_handler(commands=['details'])
-def details(message):
-    user_id = str(message.from_user.id)
-    username = message.from_user.username
-    
-    plan_type = "Bʜᴀɪɴᴋᴀʀ Pʟᴀɴ" if is_authorized(user_id) else "Fʀᴇᴇ Pʟᴀɴ"
-    chat_id = message.chat.id
-    gif_url = "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExNWt0YWZyaHRrbG5xNzN4MTlkOWZmeDRyZ2ZjcmlwMjhlcnE1azVlNiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/2FHr56vo08zbq8ac0C/giphy.gif"
-    bot.send_animation(chat_id, gif_url, caption=f"𝗬𝗼𝘂𝗿 𝗗𝗲𝘁𝗮𝗶𝗹𝘀:\n<b>Username:</b> @{username}\n<b>Chat ID:</b><code> {user_id}</code>\n<b>Plan:</b> {plan_type}\n\n<b>Bᴏᴛ ʙʏ</b> @bhainkar", parse_mode="HTML",)
-    
+            
 # Command to authorize users (Owner only)
 @bot.message_handler(commands=['add'])
 def authorize_user(message):
