@@ -5,20 +5,24 @@ import time
 import threading
 from uuid import uuid1
 from datetime import datetime, timedelta
-from flask import Flask, request
+from flask import Flask
+import random
+import string
 
 bot = telebot.TeleBot('7639935025:AAEupN7TEP0YxiyryyFCKzpnUI0Wx1VQaV4')
 
-authorized_users = set()  # Owner is automatically authorized
+authorized_users = set() # Owner is automatically authorized
 free_users = set()
 user_limits = {}  # Tracks the limit of mchk for free users
 hits_file = "CʀᴜɴᴄʜʏRᴏʟʟ_Hɪᴛs.txt"
 cooldown = {}
 cooldown_time = 30  # Free user cooldown in seconds
 mchk_max_free = 3  # Free users can check up to 3 combinations per command
-authorized_limit = 100  # Authorized users can check 300 combinations
+authorized_limit = 100  # Authorized users can check 150 combinations
 owner_id = "5727462573"  # Replace with your own chat ID
 total_users = 0
+
+redeem_codes = {}
 
 app = Flask(__name__)
 
@@ -33,10 +37,51 @@ def get_message():
 def index():
     return "Bot is running!"
     
+   
+# Helper function to generate a redeem code
+def generate_redeem_code():
+    code = "BHAINKAR-" + ''.join(random.choices(string.ascii_uppercase + string.digits + "!@#$%^&*", k=10))
+    redeem_codes[code] = False  # Code is initially unused
+    return code
+
+# Command for the owner to generate a new redeem code
+@bot.message_handler(commands=['gencode'])
+def generate_code(message):
+    user_id = str(message.from_user.id)
+    
+    # Check if the user is the owner
+    if user_id == owner_id:
+        code = generate_redeem_code()
+        bot.send_message(message.chat.id, f"🔑 Nᴇᴡ Rᴇᴅᴇᴇᴍ Cᴏᴅᴇ Gᴇɴᴇʀᴀᴛᴇᴅ:\n\n<code>{code}</code>", parse_mode='HTML')
+    else:
+        bot.send_message(message.chat.id, "Yᴏᴜ Aʀᴇ Nᴏᴛ Aᴜᴛʜᴏʀɪᴢᴇᴅ Tᴏ Gᴇɴᴇʀᴀᴛᴇ Cᴏᴅᴇs.", disable_web_page_preview=True)
+
+# Command for users to redeem a code
+@bot.message_handler(commands=['redeem'])
+def redeem_code(message):
+    user_id = str(message.from_user.id)
+    try:
+        code = message.text.split()[1]
+        
+        # Check if the code exists and is not used
+        if code in redeem_codes and not redeem_codes[code]:
+            redeem_codes[code] = True  # Mark code as used
+            authorized_users.add(user_id)  # Authorize the user
+            if user_id in free_users:
+                free_users.remove(user_id)
+            bot.send_message(message.chat.id, "✅ Sᴜᴄᴄᴇss! Yᴏᴜ ᴀʀᴇ ɴᴏᴡ ᴀɴ Aᴜᴛʜᴏʀɪᴢᴇᴅ Usᴇʀ.", disable_web_page_preview=True)
+        else:
+            bot.send_message(message.chat.id, "❌ Iɴᴠᴀʟɪᴅ ᴏʀ Aʟʀᴇᴀᴅʏ Usᴇᴅ Cᴏᴅᴇ.", disable_web_page_preview=True)
+    except IndexError:
+        bot.send_message(message.chat.id, "Pʟᴇᴀsᴇ Usᴇ: /redeem CODE", disable_web_page_preview=True)
+
 # Handler to display bot statistics
 @bot.message_handler(commands=['stats'])
 def stats(message):
+    # Calculate total users by adding both authorized and free users
     total_users = len(authorized_users) + len(free_users)
+    
+    # Send the stats to the user
     bot.send_message(
         message.chat.id,
         f"📊 𝐁𝐨𝐭 𝐒𝐭𝐚𝐭𝐢𝐬𝐭𝐢𝐜𝐬:\n\n"
@@ -45,6 +90,12 @@ def stats(message):
         f"🔒 𝗔𝘂𝘁𝗵𝗼𝗿𝗶𝘇𝗲𝗱 𝗨𝘀𝗲𝗿𝘀: {len(authorized_users)}",
         disable_web_page_preview=True
     )
+# Helper function to get current time
+def current_time():
+    return datetime.now()
+
+def is_authorized(user_id):
+    return str(user_id) in authorized_users
 
 # Anti-spam cooldown for free users
 def anti_spam(func):
@@ -60,17 +111,6 @@ def anti_spam(func):
 
         return func(message)
     return wrapper
-
-# Command to check details of the user
-@bot.message_handler(commands=['details'])
-def details(message):
-    user_id = str(message.from_user.id)
-    username = message.from_user.username
-    
-    plan_type = "Bʜᴀɪɴᴋᴀʀ Pʟᴀɴ" if is_authorized(user_id) else "Fʀᴇᴇ Pʟᴀɴ"
-    chat_id = message.chat.id
-    gif_url = "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExNWt0YWZyaHRrbG5xNzN4MTlkOWZmeDRyZ2ZjcmlwMjhlcnE1azVlNiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/2FHr56vo08zbq8ac0C/giphy.gif"
-    bot.send_animation(chat_id, gif_url, caption=f"𝗬𝗼𝘂𝗿 𝗗𝗲𝘁𝗮𝗶𝗹𝘀:\n<b>Username:</b> @{username}\n<b>Chat ID:</b><code> {user_id}</code>\n<b>Plan:</b> {plan_type}\n\n<b>Bᴏᴛ ʙʏ</b> @bhainkar", parse_mode="HTML",)
     
 
 # Handle /start command
@@ -110,6 +150,7 @@ def add_user(message):
         "Bᴏᴛ Bʏ @bhainkar"), parse_mode='HTML')
 
 
+
 # Handle /chk for a single account
 @bot.message_handler(commands=['chk'])
 @anti_spam
@@ -118,12 +159,15 @@ def chk(message):
     current_time = time.time()
 
     try:
+        # Parse the email and password from the message
         email, pasw = message.text.split()[1].split(':')
         
+        # Check if the account format is valid
         if not check_account_format(email, pasw):
             bot.send_message(message.chat.id, "Usᴇ /chk email:pass Tᴏ Sᴛᴀʀᴛ Cʜᴇᴄᴋɪɴɢ", disable_web_page_preview=True)
             return
 
+        # If valid account format, apply cooldown
         if user_id not in authorized_users:
             if user_id in cooldown and (current_time - cooldown[user_id] < cooldown_time):
                 remaining_time = int(cooldown_time - current_time - cooldown[user_id])
@@ -131,20 +175,24 @@ def chk(message):
                 return
             cooldown[user_id] = current_time
 
+        # Processing message
         bot.send_message(message.chat.id, "Processing...", disable_web_page_preview=True)
+
+        # Continue with the check process
         result = check_crunchyroll_account(email, pasw, message)
         bot.send_message(message.chat.id, result, parse_mode='HTML', disable_web_page_preview=True)
         
     except (ValueError, IndexError):
+        # Catch errors in the command format and notify the user
         bot.send_message(message.chat.id, "Usᴇ /chk email:pass Tᴏ Sᴛᴀʀᴛ Cʜᴇᴄᴋɪɴɢ", disable_web_page_preview=True)
-        
+
+# Helper function to check if the account format is valid
 def check_account_format(email, pasw):
     # Check for the basic structure of email and password
     if "@" in email and len(pasw) > 0:
         return True
     return False
-    
-# Handle /mchk for multiple accounts
+
 @bot.message_handler(commands=['mchk'])
 @anti_spam
 def mchk(message):
@@ -170,6 +218,10 @@ def mchk(message):
             email, pasw = account.split(':')
             result = check_crunchyroll_account(email, pasw, message)
             bot.send_message(message.chat.id, result, parse_mode='HTML', disable_web_page_preview=True)
+
+        # Increment the user's usage count if they are not authorized
+        if not is_authorized(user_id):
+            user_limits[user_id]['count'] += len(accounts)
 
     except (ValueError, IndexError):
         bot.send_message(message.chat.id, "Usᴇ /mchk email:pass [email:pass] (up to 3 for free users)", disable_web_page_preview=True)
@@ -264,8 +316,21 @@ def broadcast(message):
         bot.send_message(message.chat.id, "Bʀᴏᴀᴅᴄᴀsᴛ Mᴇssᴀɢᴇ Sᴇɴᴛ Tᴏ Aʟʟ Usᴇʀs!", disable_web_page_preview=True)
 
     except Exception as e:
-        bot.send_message(message.chat.id, f"Sᴏᴍᴇᴛʜɪɴɢ Wᴇɴᴛ Wʀᴏɴɢ: {str(e)}", disable_web_page_preview=True)    
-            
+        bot.send_message(message.chat.id, f"Sᴏᴍᴇᴛʜɪɴɢ Wᴇɴᴛ Wʀᴏɴɢ: {str(e)}", disable_web_page_preview=True)
+
+
+        
+# Command to check details of the user
+@bot.message_handler(commands=['details'])
+def details(message):
+    user_id = str(message.from_user.id)
+    username = message.from_user.username
+    
+    plan_type = "Bʜᴀɪɴᴋᴀʀ Pʟᴀɴ" if is_authorized(user_id) else "Fʀᴇᴇ Pʟᴀɴ"
+    chat_id = message.chat.id
+    gif_url = "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExNWt0YWZyaHRrbG5xNzN4MTlkOWZmeDRyZ2ZjcmlwMjhlcnE1azVlNiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/2FHr56vo08zbq8ac0C/giphy.gif"
+    bot.send_animation(chat_id, gif_url, caption=f"𝗬𝗼𝘂𝗿 𝗗𝗲𝘁𝗮𝗶𝗹𝘀:\n<b>Username:</b> @{username}\n<b>Chat ID:</b><code> {user_id}</code>\n<b>Plan:</b> {plan_type}\n\n<b>Bᴏᴛ ʙʏ</b> @bhainkar", parse_mode="HTML",)
+    
 # Command to authorize users (Owner only)
 @bot.message_handler(commands=['add'])
 def authorize_user(message):
@@ -328,6 +393,4 @@ def remove_user(message):
 if __name__ == "__main__":
     bot.remove_webhook()
     bot.set_webhook(url="https://niga-8og4.onrender.com/" + bot.token)  # Replace with your server URL
-    app.run(host="0.0.0.0", port=5000)  # You can change the port number if needed
-
-           
+    app.run(host="0.0.0.0", port=5000)  # You can change the port number if needed 
