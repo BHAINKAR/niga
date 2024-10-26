@@ -69,6 +69,7 @@ def redeem_code(message):
             authorized_users.add(user_id)  # Authorize the user
             if user_id in free_users:
                 free_users.remove(user_id)
+            bot.send_message(owner_id, f"Usᴇʀ<code> {user_id}</code> Hᴀs ʀᴇᴅᴇᴇᴍᴇᴅ ᴛʜᴇ ᴄᴏᴅᴇ: {code}", parse_mode='HTML')
             bot.send_message(message.chat.id, "✅ Sᴜᴄᴄᴇss! Yᴏᴜ ᴀʀᴇ ɴᴏᴡ ᴀɴ Aᴜᴛʜᴏʀɪᴢᴇᴅ Usᴇʀ.", disable_web_page_preview=True)
         else:
             bot.send_message(message.chat.id, "❌ Iɴᴠᴀʟɪᴅ ᴏʀ Aʟʀᴇᴀᴅʏ Usᴇᴅ Cᴏᴅᴇ.", disable_web_page_preview=True)
@@ -176,7 +177,7 @@ def chk(message):
             cooldown[user_id] = current_time
 
         # Processing message
-        bot.send_message(message.chat.id, "Processing...", disable_web_page_preview=True)
+        bot.send_message(message.chat.id, "Pʀᴏᴄᴇssɪɴɢ...", disable_web_page_preview=True)
 
         # Continue with the check process
         result = check_crunchyroll_account(email, pasw, message)
@@ -311,7 +312,7 @@ def broadcast(message):
             try:
                 bot.send_message(user, broadcast_message)
             except Exception as e:
-                print(f"Failed to send message to {user}: {e}")  # Log the error
+                print(f"Fᴀɪʟᴇᴅ ᴛᴏ sᴇɴᴅ ᴍᴇssᴀɢᴇ ᴛᴏ {user}: {e}")  # Log the error
 
         bot.send_message(message.chat.id, "Bʀᴏᴀᴅᴄᴀsᴛ Mᴇssᴀɢᴇ Sᴇɴᴛ Tᴏ Aʟʟ Usᴇʀs!", disable_web_page_preview=True)
 
@@ -338,14 +339,14 @@ def authorize_user(message):
 
     # Only owner can authorize
     if str(user_id) != owner_id:
-        bot.send_message(message.chat.id, "Unauthorized! Only the owner can authorize users.")
+        bot.send_message(message.chat.id, "Uɴᴀᴜᴛʜᴏʀɪᴢᴇᴅ! Oɴʟʏ ᴛʜᴇ ᴏᴡɴᴇʀ ᴄᴀɴ ᴀᴜᴛʜᴏʀɪᴢᴇ ᴜsᴇʀs.")
         return
 
     # Get the user ID to authorize
     try:
         user_to_authorize = str(message.text.split()[1])  # The user ID to authorize as a string
     except (IndexError, ValueError):
-        bot.send_message(message.chat.id, "Please provide a valid user ID to authorize.")
+        bot.send_message(message.chat.id, "Pʟᴇᴀsᴇ ᴘʀᴏᴠɪᴅᴇ ᴀ ᴠᴀʟɪᴅ ᴜsᴇʀ ɪᴅ ᴛᴏ ᴀᴜᴛʜᴏʀɪᴢᴇ.")
         return
 
     # Check if the user is in the free users list
@@ -354,7 +355,7 @@ def authorize_user(message):
         authorized_users.add(user_to_authorize)
         bot.send_message(message.chat.id, f"User {user_to_authorize} has been authorized!")
     else:
-        bot.send_message(message.chat.id, "User not found in free users list.")
+        bot.send_message(message.chat.id, "Usᴇʀ ɴᴏᴛ ғᴏᴜɴᴅ ɪɴ ғʀᴇᴇ ʟɪsᴛ.")
 
         
 @bot.message_handler(commands=['remove'])
