@@ -8,6 +8,9 @@ from datetime import datetime, timedelta
 from flask import Flask, request
 import random
 import string
+from telebot import types
+import uuid
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 bot = telebot.TeleBot('7639935025:AAEupN7TEP0YxiyryyFCKzpnUI0Wx1VQaV4')
 
@@ -19,10 +22,7 @@ cooldown = {}
 cooldown_time = 30  # Free user cooldown in seconds
 mchk_max_free = 3  # Free users can check up to 3 combinations per command
 authorized_limit = 100  # Authorized users can check 150 combinations
-owner_id = "5727462573"  # Replace with your own chat ID
 total_users = 0
-
-redeem_codes = {}
 
 app = Flask(__name__)
 
@@ -37,24 +37,287 @@ def get_message():
 def index():
     return "Bot is running!"
     
-   
-# Helper function to generate a redeem code
-def generate_redeem_code():
+pending_gift = {}  # Dictionary to store pending gifts for confirmation, keyed by sender ID
+gift_messages = {}  # Dictionary to store gift messages keyed by a unique ID
+
+@bot.message_handler(commands=['gift'])
+def initiate_gift(message):
+    sender_id = message.from_user.id
+
+    try:
+        # Parse the username from the command
+        parts = message.text.split(" ", 1)
+        if len(parts) < 2:
+            bot.send_message(message.chat.id, "Pʟᴇᴀsᴇ Usᴇ Tʜᴇ Fᴏʀᴍᴀᴛ:\n/gift @username\n\nWʜᴇʀᴇ ᴛᴏ ɢᴇᴛ Cʜᴀᴛ-Iᴅ?\nJᴜsᴛ ᴛʏᴘᴇ /lb", disable_web_page_preview=True)
+            return
+
+        username = parts[1].lstrip('@')  # Extract username without "@"
+
+        # Retrieve user ID from username
+        recipient = bot.get_chat(username)  # Get user info
+        recipient_id = recipient.id  # Extract user ID
+
+        # Ask for the gift message
+        msg = bot.send_message(message.chat.id, "Pʟᴇᴀsᴇ ᴇɴᴛᴇʀ ᴛʜᴇ ᴍᴇssᴀɢᴇ ᴡʜɪᴄʜ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ sᴇɴᴅ ɪᴛ ᴀs ᴀ ɢɪғᴛ ᴛᴏ ᴛʜᴇ ʀᴇᴄᴇɪᴠᴇʀ")
+        bot.register_next_step_handler(msg, get_gift_message, recipient_id, sender_id)
+
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Eʀʀᴏʀ: {str(e)}")
+
+def get_gift_message(message, recipient_id, sender_id):
+    gift_message = message.text  # Get the gift message from user input
+    unique_id = str(uuid.uuid4())  # Generate a unique identifier for the gift
+
+    # Store the gift message with the unique ID
+    gift_messages[unique_id] = gift_message
+
+    # Create inline keyboard for confirmation
+    markup = types.InlineKeyboardMarkup()
+    confirm_button = types.InlineKeyboardButton("✅ Confirm", callback_data=f"confirm_gift:{recipient_id}:{unique_id}")
+    cancel_button = types.InlineKeyboardButton("❌ Cancel", callback_data="cancel_gift")
+    markup.add(confirm_button, cancel_button)
+
+    # Ask for confirmation, including the gift message
+    confirmation_text = f"Pʟᴇᴀsᴇ cᴏɴfɪʀᴍ ʏᴏᴜʀ ɢɪғᴛ:\n\n{gift_message}"
+    bot.send_message(message.chat.id, confirmation_text, reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("confirm_gift"))
+def confirm_gift(call):
+    # Extract recipient_id and unique_id from callback data
+    _, recipient_id, unique_id = call.data.split(":", 2)
+
+    try:
+        gift_message = gift_messages[unique_id]  # Retrieve the message using the unique ID
+        bot.send_message(recipient_id, f"🎁 Yᴏᴜʀ ɢɪғᴛ ғʀᴏᴍ @{call.from_user.username}:\n\n{gift_message}", disable_web_page_preview=True)
+        bot.send_message(call.message.chat.id, "🎉 Gɪғᴛ sᴇɴᴛ sᴜᴄᴄᴇssғᴜʟʟʏ!")
+
+        # Disable the buttons after use
+        bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+        del gift_messages[unique_id]  # Clean up the message from memory
+
+    except Exception as e:
+        bot.send_message(call.message.chat.id, f"❌ Eʀʀᴏʀ: Fᴀɪʟᴇᴅ ᴛᴏ sᴇɴᴅ ɢɪғᴛ: {str(e)}")
+
+@bot.callback_query_handler(func=lambda call: call.data == "cancel_gift")
+def cancel_gift(call):
+    bot.send_message(call.message.chat.id, "🎁 Gɪғᴛ ᴄᴀɴᴄᴇʟʟᴇᴅ.")
+    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)  # Disable the buttons
+
+redeem_codes = {}
+account_stock = []
+user_data= {}
+redeemed_accounts = set()
+user_data = {}
+redeemed_accounts = set()
+account_stock = [] 
+owner_id = "5727462573"
+
+FREE_USER_COOLDOWN = 21600  # 6 hours in seconds
+FREE_USER_LIMIT = 1  # Max accounts for free users
+
+owner_id2 = 5727462573
+@bot.message_handler(commands=['menu'])
+def show_menu(message):
+    chat_id = message.chat.id
+    markup = InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        InlineKeyboardButton("📊 Stats", callback_data='stats'),
+        InlineKeyboardButton("🏆 Leaderboard", callback_data='lb'),
+        InlineKeyboardButton("🆘 Support", callback_data='support'),
+        InlineKeyboardButton("🔧 Generate Accounts", callback_data='genacc'),
+        InlineKeyboardButton("📦 Check Account Stock", callback_data='check_stock')
+    )
+    # Owner-only buttons
+    if message.from_user.id == owner_id2:
+        markup.add(
+            InlineKeyboardButton("➕ Add Accounts", callback_data='add_accounts'),
+            InlineKeyboardButton("➖ Remove Accounts", callback_data='remove_accounts')
+        )
+    bot.send_message(chat_id, "📌 Select an option from the menu below:", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: True)
+def callback_query(call):
+    if call.data == 'stats':
+    	stats(call.message)
+    elif call.data == 'lb':
+    	lb(call.message)
+    elif call.data == 'support':
+    	support(call.message)
+    elif call.data == 'genacc':
+        generate_account(call.message)
+    elif call.data == 'check_stock':
+        check_account_stock(call.message)
+    elif call.data == 'add_accounts':
+        add_accounts(call.message)
+    elif call.data == 'remove_accounts':
+        remove_accounts(call.message)
+    else:
+        bot.answer_callback_query(call.id)
+
+def check_account_stock(message):
+    user_id = message.from_user.id
+    stock_message = "📦 Current Account Stock:\n"
+    
+    if user_id == owner_id2:
+        # If the user is the owner, show all accounts
+        if account_stock:
+            stock_message += "\n".join(account_stock)
+        else:
+            stock_message += "Nᴏ ᴀᴄᴄᴏᴜɴᴛs ᴀᴠᴀɪʟᴀʙʟᴇ."
+    else:
+        # For regular users, show only the number of available accounts
+        available_count = len(account_stock)
+        stock_message += f"Tʜᴇʀᴇ ᴀʀᴇ  ᴄᴜʀʀᴇɴᴛʟʏ {available_count} Aᴄᴄᴏᴜɴᴛs ᴀᴠᴀɪʟᴀʙʟᴇ."
+    
+    bot.send_message(message.chat.id, stock_message)
+
+def add_accounts(message):
+    user_id = message.from_user.id
+    
+    bot.send_message(message.chat.id, "Pʟᴇᴀsᴇ sᴇɴᴅ ᴍᴇ ᴛʜᴇ ᴀᴄᴄᴏᴜɴᴛs ᴛᴏ ᴀᴅᴅ, ᴏɴᴇ ᴘᴇʀ ʟɪɴᴇ.")
+    bot.register_next_step_handler(message, process_add_accounts)
+
+def process_add_accounts(message):
+    accounts = message.text.splitlines()
+    formatted_accounts = []
+
+    for account in accounts:
+        parts = account.split(":")  # Split into email and password
+        if len(parts) != 2:
+            continue  # Ignore malformed input
+        email, password = parts[0].strip(), parts[1].strip()
+        formatted_account = (
+            "Cʀᴜɴᴄʜʏʀᴏʟʟ ᥫ᭡ Pʀᴇᴍɪᴜᴍ\n\n"
+            f"Eᴍᴀɪʟ ✉️: {email}\n"
+            f"Pᴀssᴡᴏʀᴅ 🔑: {password}\n\n"
+            "Cʜᴇᴄᴋᴇᴅ ʙʏ 3ㅤXㅤZㅤAㅤت︎\n"
+            "Pʟᴀɴ: Bʜᴀɪɴᴋᴀʀ Pʟᴀɴ\n"
+            "Bᴏᴛ ʙʏ @bhainkar"
+        )
+        if formatted_account not in account_stock:  # Avoid duplicates
+            formatted_accounts.append(formatted_account)
+
+    account_stock.extend(formatted_accounts)  # Add formatted accounts to stock
+    bot.send_message(message.chat.id, f"✅ Aᴅᴅᴇᴅ {len(formatted_accounts)} Aᴄᴄᴏᴜɴᴛs.", parse_mode='HTML')
+
+
+def remove_accounts(message):
+    user_id = message.from_user.id
+    
+    bot.send_message(message.chat.id, "Pʟᴇᴀsᴇ sᴇɴᴅ ᴍᴇ ᴛʜᴇ ᴀᴄᴄᴏᴜɴᴛs ᴛᴏ ʀᴇᴍᴏᴠᴇ, ᴏɴᴇ ᴘᴇʀ ʟɪɴᴇ.")
+    bot.register_next_step_handler(message, process_remove_accounts)
+
+def process_remove_accounts(message):
+    accounts = message.text.splitlines()
+    removed_count = sum(1 for account in accounts if account in account_stock)
+    account_stock[:] = [account for account in account_stock if account not in accounts]
+    bot.send_message(message.chat.id, f"✅ Rᴇᴍᴏᴠᴇᴅ {removed_count} Aᴄᴄᴏᴜɴᴛs.")
+
+def generate_account(message):
+    user_id = message.from_user.id
+    is_authorized = user_id == owner_id  # Check if the user is the owner
+    cooldown_time = AUTH_USER_COOLDOWN if is_authorized else FREE_USER_COOLDOWN
+
+    if user_id not in user_data:
+        user_data[user_id] = {'last_generated': None}
+
+    user_info = user_data[user_id]
+    now = datetime.now()
+
+    # Check if user is on cooldown
+    if user_info['last_generated'] and (now < user_info['last_generated'] + timedelta(seconds=cooldown_time)):
+        remaining_time = (user_info['last_generated'] + timedelta(seconds=cooldown_time)) - now
+        bot.send_message(message.chat.id, f"⏳ Pʟᴇᴀsᴇ ᴡᴀɪᴛ {remaining_time.seconds // 3600} ʜᴏᴜʀs ᴀɴᴅ {remaining_time.seconds % 3600 // 60} ᴍɪɴᴜᴛᴇs ʙᴇғᴏʀᴇ ɢᴇɴᴇʀᴀᴛɪɴɢ ᴀɢᴀɪɴ.")
+        return
+
+    if not account_stock:
+        bot.send_message(message.chat.id, "⚠️ Nᴏ ᴀᴄᴄᴏᴜɴᴛs ᴛᴏ ɢᴇɴᴇʀᴀᴛᴇ.")
+        return
+
+    # Generate the account
+    account = account_stock.pop(0)  # Get an account from the stock
+    redeemed_accounts.add(account)  # Mark the account as redeemed
+    user_info['last_generated'] = now  # Reset the last generated time
+
+    bot.send_message(message.chat.id, f"✅ Aᴄᴄᴏᴜɴᴛ ɢᴇɴᴇʀᴀᴛᴇᴅ:\n {account}")
+
+@bot.message_handler(commands=['reset'])
+def reset_user(message):
+    user_id = message.from_user.id
+    if user_id in user_data:
+        del user_data[user_id]
+        bot.send_message(message.chat.id, "🔄 Yᴏᴜʀ ɢᴇɴᴇʀᴀᴛɪᴏɴ ᴅᴀᴛᴀ ʜᴀs ʙᴇᴇɴ ʀᴇsᴇᴛ.")
+    else:
+        bot.send_message(message.chat.id, "⚠️ Yᴏᴜ ʜᴀᴠᴇ ɴᴏ ɢᴇɴᴇʀᴀᴛɪᴏɴ ᴅᴀᴛᴀ ᴛᴏ ʀᴇsᴇᴛ.")
+
+
+def is_authorized(user_id):
+    return user_id in authorized_users
+
+# Helper function to generate a redeem code with an expiry time
+def generate_redeem_code(expiry_time):
     code = "BHAINKAR-" + ''.join(random.choices(string.ascii_uppercase + string.digits + "!@#$%^&*", k=10))
-    redeem_codes[code] = False  # Code is initially unused
+    redeem_codes[code] = {'used': False, 'expiry_time': expiry_time, 'user_id': None}
     return code
+
+# Function to remove expired users
+def remove_expired_users():
+    while True:
+        current_time = datetime.now()
+        expired_codes = [code for code, data in redeem_codes.items() if data['used'] and current_time >= data['expiry_time']]
+        
+        for code in expired_codes:
+            try:
+                # Re-check if the code still exists in redeem_codes
+                if code in redeem_codes:
+                    user_id = redeem_codes[code].get('user_id')
+                    if user_id and user_id in authorized_users:
+                        authorized_users.remove(user_id)
+                        free_users.add(user_id)
+                        bot.send_message(user_id, "❌ Yᴏᴜʀ Bʜᴀɪɴᴋᴀʀ Pʟᴀɴ ʜᴀs ᴇxᴘɪʀᴇᴅ. Yᴏᴜ ʜᴀᴠᴇ ʙᴇᴇɴ ᴍᴏᴠᴇᴅ ʙᴀᴄᴋ ᴛᴏ ᴛʜᴇ Fʀᴇᴇ Pʟᴀɴ.")
+                    
+                    # Safely remove the expired code
+                    redeem_codes.pop(code, None)
+            except KeyError:
+                # Continue if a KeyError is raised to avoid interrupting the loop
+                continue
+        
+        # Check every minute
+        threading.Event().wait(60)
+
+# Start a thread to handle expiration checks
+threading.Thread(target=remove_expired_users, daemon=True).start()
 
 # Command for the owner to generate a new redeem code
 @bot.message_handler(commands=['gencode'])
 def generate_code(message):
     user_id = str(message.from_user.id)
     
-    # Check if the user is the owner
     if user_id == owner_id:
-        code = generate_redeem_code()
-        bot.send_message(message.chat.id, f"🔑 Nᴇᴡ Rᴇᴅᴇᴇᴍ Cᴏᴅᴇ Gᴇɴᴇʀᴀᴛᴇᴅ:\n\n<code>{code}</code>", parse_mode='HTML')
+        try:
+            bot.send_message(message.chat.id, "Pʟᴇᴀsᴇ ᴇɴᴛᴇʀ ᴛʜᴇ ᴅᴜʀᴀᴛɪᴏɴ (ᴅᴀʏs ʜᴏᴜʀs ᴍɪɴᴜᴛᴇs sᴇᴄᴏɴᴅs) ᴛᴏ ᴇxᴘɪʀᴇ:")
+            bot.register_next_step_handler(message, get_duration)
+        except Exception as e:
+            bot.send_message(message.chat.id, f"❌ Eʀʀᴏʀ: {str(e)}")
     else:
         bot.send_message(message.chat.id, "Yᴏᴜ Aʀᴇ Nᴏᴛ Aᴜᴛʜᴏʀɪᴢᴇᴅ Tᴏ Gᴇɴᴇʀᴀᴛᴇ Cᴏᴅᴇs.", disable_web_page_preview=True)
+
+def get_duration(message):
+    try:
+        # Parse the duration from the message
+        duration_parts = message.text.split()
+        duration = timedelta(
+            days=int(duration_parts[0]),
+            hours=int(duration_parts[1]),
+            minutes=int(duration_parts[2]),
+            seconds=int(duration_parts[3])
+        )
+        expiry_time = datetime.now() + duration
+        code = generate_redeem_code(expiry_time)
+        
+        bot.send_message(message.chat.id, f"🔑 Nᴇᴡ Rᴇᴅᴇᴇᴍ Cᴏᴅᴇ Gᴇɴᴇʀᴀᴛᴇᴅ:\n\n<code>{code}</code>\n\n🕒 Expiry Time: {expiry_time}", parse_mode='HTML')
+    except (ValueError, IndexError):
+        bot.send_message(message.chat.id, "❌ Iɴᴠᴀʟɪᴅ Fᴏʀᴍᴀᴛ. Pʟᴇᴀsᴇ Usᴇ: days hours minutes seconds.")
 
 # Command for users to redeem a code
 @bot.message_handler(commands=['redeem'])
@@ -62,21 +325,31 @@ def redeem_code(message):
     user_id = str(message.from_user.id)
     try:
         code = message.text.split()[1]
-        
-        # Check if the code exists and is not used
-        if code in redeem_codes and not redeem_codes[code]:
-            redeem_codes[code] = True  # Mark code as used
-            authorized_users.add(user_id)  # Authorize the user
-            if user_id in free_users:
-                free_users.remove(user_id)
-            bot.send_message(owner_id, f"Usᴇʀ<code> {user_id}</code> Hᴀs ʀᴇᴅᴇᴇᴍᴇᴅ ᴛʜᴇ ᴄᴏᴅᴇ: {code}", parse_mode='HTML')
-            bot.send_message(message.chat.id, "✅ Sᴜᴄᴄᴇss! Yᴏᴜ ᴀʀᴇ ɴᴏᴡ ᴀɴ Aᴜᴛʜᴏʀɪᴢᴇᴅ Usᴇʀ.", disable_web_page_preview=True)
-        else:
-            bot.send_message(message.chat.id, "❌ Iɴᴠᴀʟɪᴅ ᴏʀ Aʟʀᴇᴀᴅʏ Usᴇᴅ Cᴏᴅᴇ.", disable_web_page_preview=True)
-    except IndexError:
-        bot.send_message(message.chat.id, "Pʟᴇᴀsᴇ Usᴇ: /redeem CODE", disable_web_page_preview=True)
 
-# Handler to display bot statistics
+        # Check if the code exists and is not used
+        if code in redeem_codes and not redeem_codes[code]['used']:
+            # Mark the code as used and store user info
+            redeem_codes[code]['used'] = True
+            redeem_codes[code]['user_id'] = user_id
+            expiry_time = redeem_codes[code]['expiry_time']
+
+            # Move user from free_users to authorized_users
+            free_users.discard(user_id)
+            authorized_users.add(user_id)
+
+            # Notify user and owner
+            bot.send_message(owner_id, f"Usᴇʀ {user_id} ʜᴀs ʀᴇᴅᴇᴇᴍᴇᴅ ᴛʜᴇ ᴄᴏᴅᴇ: {code}\n🕒 Exᴘɪʀᴇs Aᴛ: {expiry_time}", parse_mode='HTML')
+            bot.send_message(user_id, f"✅ Sᴜᴄᴄᴇss! Yᴏᴜ ᴀʀᴇ ɴᴏᴡ ᴏɴ ᴛʜᴇ Bʜᴀɪɴᴋᴀʀ Pʟᴀɴ", disable_web_page_preview=True)
+        else:
+            bot.send_message(user_id, "❌ Iɴᴠᴀʟɪᴅ ᴏʀ ᴀʟʀᴇᴀᴅʏ ᴜsᴇᴅ ᴄᴏᴅᴇ.", disable_web_page_preview=True)
+    except IndexError:
+        bot.send_message(user_id, "Pʟᴇᴀsᴇ ᴜsᴇ: /redeem CODE", disable_web_page_preview=True)
+
+# Start the thread to check for expired users
+expiry_thread = threading.Thread(target=remove_expired_users, daemon=True)
+expiry_thread.start()
+
+
 @bot.message_handler(commands=['stats'])
 def stats(message):
     # Calculate total users by adding both authorized and free users
@@ -87,8 +360,8 @@ def stats(message):
         message.chat.id,
         f"📊 𝐁𝐨𝐭 𝐒𝐭𝐚𝐭𝐢𝐬𝐭𝐢𝐜𝐬:\n\n"
         f"👥 𝗧𝗼𝘁𝗮𝗹 𝗨𝘀𝗲𝗿𝘀: {total_users}\n"
-        f"🔓 𝗙𝗿𝗲𝗲 𝗨𝘀𝗲𝗿𝘀: {len(free_users)}\n"
-        f"🔒 𝗔𝘂𝘁𝗵𝗼𝗿𝗶𝘇𝗲𝗱 𝗨𝘀𝗲𝗿𝘀: {len(authorized_users)}",
+        f"🔓 𝗙𝗿𝗲𝗲 𝗣𝗹𝗮𝗻: {len(free_users)}\n"
+        f"🔒 𝗕𝗵𝗮𝗶𝗻𝗸𝗮𝗿 𝗣𝗹𝗮𝗻: {len(authorized_users)}",
         disable_web_page_preview=True
     )
 # Helper function to get current time
@@ -146,9 +419,50 @@ def add_user(message):
         "\n"
         "ℹ️ <b>Details:</b> Use /details to check your info"
         "\n"
+        "👾 <b>More Features:</b> Usᴇ /menu for more features of this bot\n"
         "<i>Enjoy fast and accurate checking with</i> <b>CʀᴜɴᴄʜʏRᴏʟʟ Cʜᴇᴄᴋᴇʀ</b>!"
         "\n\n"
         "Bᴏᴛ Bʏ @bhainkar"), parse_mode='HTML')
+        
+        
+@bot.message_handler(commands=['lb'])
+def lb(message):
+    if not free_users and not authorized_users:
+        bot.send_message(message.chat.id, "Nᴏ ᴜsᴇʀs ʏᴇᴛ.")
+        return
+
+    # Count total users
+    total_users_count = len(free_users) + len(authorized_users)
+    
+    leaderboard_message = f"👥 𝗟𝗲𝗮𝗱𝗲𝗿𝗯𝗼𝗮𝗿𝗱: {total_users_count}\n"
+    
+    for user_id in free_users:
+        try:
+            user = bot.get_chat(user_id)  # Retrieve user info
+            first_name = user.first_name  # Get first name
+            
+            # Escape any Markdown special characters in first_name
+            safe_first_name = first_name.replace('_', '\\_').replace('*', '\\*').replace('[', '\\[').replace(']', '\\]').replace('`', '\\`')
+            leaderboard_message += f"- [{safe_first_name}](tg://user?id={user_id}) 𝙸𝙳: {user_id}\n"
+        except Exception as e:
+            print(f"Fᴀɪʟᴇᴅ ᴛᴏ ɢᴇᴛ ᴜsᴇʀ {user_id}: {e}")
+
+    for user_id in authorized_users:
+        try:
+            user = bot.get_chat(user_id)  # Retrieve user info
+            first_name = user.first_name  # Get first name
+            
+            # Escape any Markdown special characters in first_name
+            safe_first_name = first_name.replace('_', '\\_').replace('*', '\\*').replace('[', '\\[').replace(']', '\\]').replace('`', '\\`')
+            leaderboard_message += f"- [{safe_first_name}](tg://user?id={user_id}) 𝙸𝙳: {user_id}\n"
+        except Exception as e:
+            print(f"Fᴀɪʟᴇᴅ ᴛᴏ ɢᴇᴛ ᴜsᴇʀ {user_id}: {e}")
+
+    # Send the leaderboard message
+    try:
+        bot.send_message(message.chat.id, leaderboard_message, parse_mode='Markdown')
+    except Exception as e:
+        print(f"Fᴀɪʟᴇᴅ ᴛᴏ sᴇɴᴅ ʟᴇᴀᴅᴇʀʙᴏᴀʀᴅ ᴍᴇssᴀɢᴇ: {e}")
 
 
 
@@ -300,14 +614,14 @@ def broadcast(message):
         return
 
     try:
-        # Get the message to broadcast from the command
-        broadcast_message = " ".join(message.text.split()[1:])  # Join all parts after /broadcast
+        # Preserve the original message after the command for any formatting
+        broadcast_message = message.text.partition(" ")[2]  # Get everything after '/broadcast'
 
-        if not broadcast_message:
+        if not broadcast_message.strip():
             bot.send_message(message.chat.id, "Pʟᴇᴀsᴇ Pʀᴏᴠɪᴅᴇ A Mᴇssᴀɢᴇ Tᴏ Bʀᴏᴀᴅᴄᴀsᴛ.", disable_web_page_preview=True)
             return
         
-        # Send the broadcast message to all users
+        # Send the broadcast message to all users, preserving formatting
         for user in authorized_users.union(free_users):
             try:
                 bot.send_message(user, broadcast_message)
@@ -318,7 +632,6 @@ def broadcast(message):
 
     except Exception as e:
         bot.send_message(message.chat.id, f"Sᴏᴍᴇᴛʜɪɴɢ Wᴇɴᴛ Wʀᴏɴɢ: {str(e)}", disable_web_page_preview=True)
-
 
         
 # Command to check details of the user
@@ -390,6 +703,37 @@ def remove_user(message):
     except (ValueError, IndexError):
         bot.send_message(message.chat.id, "Usᴇ /remove <user_id> Tᴏ Rᴇᴍᴏᴠᴇ A Usᴇʀ.", disable_web_page_preview=True)
 
+    
+@bot.message_handler(commands=['support'])
+def support(message):
+    user_id = message.chat.id 
+    username = message.from_user.username or 'User'
+    
+    user_profile_link = f'<a href="tg://user?id={user_id}">{user_id}</a>'
+   
+    # Support message text
+    support_text = (
+        f"👋 Hello, {user_profile_link}! Need assistance? We're here to help!\n\n"
+        "🛠 <b>Support Options:</b>\n"
+        "1. <b>Contact Support:</b> Reach out to our support team for help.\n"
+        "2. <b>Community Channel:</b> Join the discussion and find solutions in our "
+        "<a href='https://t.me/bhainkarchat'>Community Channel</a>.\n\n"
+        "📧 <b>Email:</b> 3xzaniga@gmail.com\n"
+        "💬 <b>Live Chat:</b> Start a conversation by clicking the button below."
+    )
+    
+    # Create inline keyboard for live chat and more support options
+    markup = InlineKeyboardMarkup()
+    markup.add(InlineKeyboardButton("💬 Start Live Chat", url="https://t.me/bhainkar"))
+    
+    # Send the support message with the keyboard markup
+    bot.send_message(
+        chat_id=user_id, 
+        text=support_text, 
+        parse_mode="HTML", 
+        disable_web_page_preview=True, 
+        reply_markup=markup
+    )
 
 if __name__ == "__main__":
     bot.remove_webhook()
