@@ -48,7 +48,7 @@ def initiate_gift(message):
         # Parse the username from the command
         parts = message.text.split(" ", 1)
         if len(parts) < 2:
-            bot.send_message(message.chat.id, "Pʟᴇᴀsᴇ Usᴇ Tʜᴇ Fᴏʀᴍᴀᴛ:\n/gift @username\n\nWʜᴇʀᴇ ᴛᴏ ɢᴇᴛ Cʜᴀᴛ-Iᴅ?\nJᴜsᴛ ᴛʏᴘᴇ /lb", disable_web_page_preview=True)
+            bot.send_message(message.chat.id, "Pʟᴇᴀsᴇ Usᴇ Tʜᴇ Fᴏʀᴍᴀᴛ:\n/gift Cʜᴀᴛ-ɪᴅ\n\nWʜᴇʀᴇ ᴛᴏ ɢᴇᴛ Cʜᴀᴛ-ɪᴅ?\nJᴜsᴛ ᴛʏᴘᴇ /lb", disable_web_page_preview=True)
             return
 
         username = parts[1].lstrip('@')  # Extract username without "@"
