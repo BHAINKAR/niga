@@ -12,7 +12,7 @@ from telebot import types
 import uuid
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-bot = telebot.TeleBot('7308448311:AAF5MdrUTcN9FsZnOpBFHoiipDRcCutigYE')
+bot = telebot.TeleBot('7639935025:AAEupN7TEP0YxiyryyFCKzpnUI0Wx1VQaV4')
 
 authorized_users = set() # Owner is automatically authorized
 free_users = set()
@@ -23,6 +23,19 @@ cooldown_time = 30  # Free user cooldown in seconds
 mchk_max_free = 3  # Free users can check up to 3 combinations per command
 authorized_limit = 100  # Authorized users can check 150 combinations
 total_users = 0
+
+app = Flask(__name__)
+
+@app.route('/' + bot.token, methods=['POST'])
+def get_message():
+    json_str = request.stream.read().decode('UTF-8')
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return '!', 200
+
+@app.route("/", methods=['GET'])
+def index():
+    return "Bot is running!"
     
 pending_gift = {}  # Dictionary to store pending gifts for confirmation, keyed by sender ID
 gift_messages = {}  # Dictionary to store gift messages keyed by a unique ID
@@ -732,5 +745,7 @@ def support(message):
         reply_markup=markup
     )
 
-
-bot.polling()
+if __name__ == "__main__":
+    bot.remove_webhook()
+    bot.set_webhook(url="https://niga-8og4.onrender.com/" + bot.token)  # Replace with your server URL
+    app.run(host="0.0.0.0", port=5000)  # You can change the port number if needed 
