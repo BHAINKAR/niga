@@ -110,7 +110,7 @@ redeemed_accounts = set()
 account_stock = [] 
 owner_id = "5727462573"
 
-USER_COOLDOWN = 30
+USER_COOLDOWN = 21600
 ACCOUNT_LIMIT = 1
 
 owner_id2 = 5727462573
