@@ -12,7 +12,7 @@ from telebot import types
 import uuid
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-bot = telebot.TeleBot('7308448311:AAF5MdrUTcN9FsZnOpBFHoiipDRcCutigYE')
+bot = telebot.TeleBot('7639935025:AAEupN7TEP0YxiyryyFCKzpnUI0Wx1VQaV4')
 
 authorized_users = set() # Owner is automatically authorized
 free_users = set()
