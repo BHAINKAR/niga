@@ -12,7 +12,21 @@ from telebot import types
 import uuid
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from threading import Timer
+from flask import Flask, request
 
+
+app = Flask(__name__)
+
+@app.route('/' + bot.token, methods=['POST'])
+def get_message():
+    json_str = request.stream.read().decode('UTF-8')
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return '!', 200
+
+@app.route("/", methods=['GET'])
+def index():
+    return "Bot is running!"
 # Initialize the bot
 bot = telebot.TeleBot("8024910226:AAGHYVS2iO7OcGqpxjv7uBdQM8TeM6N5rqU")
 
@@ -923,4 +937,7 @@ def details(message):
     bot.send_animation(chat_id, gif_url, caption=f"𝗬𝗼𝘂𝗿 𝗗𝗲𝘁𝗮𝗶𝗹𝘀:\n<b>Username:</b> @{username}\n<b>Chat ID:</b> <code>{user_id}</code>\n<b>Plan:</b> {plan_type}\n\n<b>Bᴏᴛ ʙʏ</b> @bhainkar", parse_mode="HTML",)
         
 if __name__ == "__main__":
-    bot.polling()
+    bot.remove_webhook()
+    bot.set_webhook(url="https://.onrender.com/" + bot.token)  # Replace with your server URL
+    app.run(host="0.0.0.0", port=5000)  # You can change the port number if needed
+      
