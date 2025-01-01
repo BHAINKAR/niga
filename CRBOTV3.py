@@ -13,6 +13,8 @@ import uuid
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from threading import Timer
 from flask import Flask, request
+# Initialize the bot
+bot = telebot.TeleBot("8024910226:AAGHYVS2iO7OcGqpxjv7uBdQM8TeM6N5rqU")
 
 
 app = Flask(__name__)
@@ -27,9 +29,7 @@ def get_message():
 @app.route("/", methods=['GET'])
 def index():
     return "Bot is running!"
-# Initialize the bot
-bot = telebot.TeleBot("8024910226:AAGHYVS2iO7OcGqpxjv7uBdQM8TeM6N5rqU")
-
+    
 # File to store persistent data
 DATA_FILE = "bot_data.json"
 
@@ -938,6 +938,6 @@ def details(message):
         
 if __name__ == "__main__":
     bot.remove_webhook()
-    bot.set_webhook(url="https://.onrender.com/" + bot.token)  # Replace with your server URL
+    bot.set_webhook(url="https://niga-ra1e.onrender.com/" + bot.token)  # Replace with your server URL
     app.run(host="0.0.0.0", port=5000)  # You can change the port number if needed
       
