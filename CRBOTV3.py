@@ -14,7 +14,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from threading import Timer
 from flask import Flask, request
 # Initialize the bot
-bot = telebot.TeleBot("8024910226:AAGHYVS2iO7OcGqpxjv7uBdQM8TeM6N5rqU")
+bot = telebot.TeleBot("7639935025:AAEupN7TEP0YxiyryyFCKzpnUI0Wx1VQaV4")
 
 
 app = Flask(__name__)
