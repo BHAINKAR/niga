@@ -17,7 +17,7 @@ from telebot.apihelper import ApiTelegramException
 from flask import Flask, request
 
 #BOT TOKEN
-bot = telebot.TeleBot("7308448311:AAH8PKkA9q-NAygvgZn-xtMv4AgJeEY2EAU")
+bot = telebot.TeleBot("7639935025:AAEupN7TEP0YxiyryyFCKzpnUI0Wx1VQaV4")
 
 #VARIABLES
 authorized_users = set()
